@@ -1,3 +1,6 @@
+## 🚀 Live Demo
+
+[Open MerchantIQ Live Demo](https://merchantiq.onrender.com)
 # MerchantIQ — AI-Powered Merchant Decision Simulator
 
 > **“Before you make a business decision, simulate its consequences.”**  
