@@ -289,7 +289,7 @@ export class SQLiteStore {
       this.decisions.set(entity.id, entity);
     }
 
-    // If no decisions exist in DB, seed Demo 1
+    // If no decisions exist in DB, seed Demo 1 (with actual outcome) and showcase presets 2-6
     if (this.decisions.size === 0) {
       const demo1 = executeFullSimulationPipeline('dec_demo_diwali_discount', DEMO_PRESETS[0].question, this.merchant);
       demo1.actual_outcome = {
@@ -301,6 +301,12 @@ export class SQLiteStore {
         notes: 'Completed Diwali high-margin 10% promo campaign. Strong margin retention achieved.'
       };
       this.saveDecision(demo1);
+
+      for (let i = 1; i < DEMO_PRESETS.length; i++) {
+        const preset = DEMO_PRESETS[i];
+        const dec = executeFullSimulationPipeline(preset.id, preset.question, this.merchant);
+        this.saveDecision(dec);
+      }
     }
 
     // 3. Load or seed Razorpay transactions

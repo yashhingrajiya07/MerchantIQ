@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import {
   DecisionType,
   Objective,
@@ -33,7 +34,7 @@ import {
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 // Capture raw body for Razorpay webhook HMAC signature verification
 app.use(
@@ -45,6 +46,11 @@ app.use(
 );
 
 app.use(cors());
+
+// Lightweight health check endpoint for Render / load balancers
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // -----------------------------------------------------------------------------
 // 1. Dashboard Summary & Multi-Timeframe Analytics & Inventory
@@ -725,6 +731,42 @@ app.post('/api/test/inject-failure', (req: Request, res: Response) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`MerchantIQ API server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+// -----------------------------------------------------------------------------
+// 6. Unmatched API Route Handler (Return 404 JSON for any unmatched /api/*)
+// -----------------------------------------------------------------------------
+app.all('/api/*', (_req: Request, res: Response) => {
+  res.status(404).json({ error: 'API route not found' });
 });
+
+// -----------------------------------------------------------------------------
+// 7. Static Frontend Serving & Single-Service SPA Fallback for Production
+// -----------------------------------------------------------------------------
+const candidateDistPaths = [
+  path.resolve(__dirname, '../../web/dist'),
+  path.resolve(process.cwd(), 'apps/web/dist'),
+  path.resolve(process.cwd(), 'dist')
+];
+const webDistPath = candidateDistPaths.find((p) => fs.existsSync(p));
+
+if (webDistPath) {
+  // Serve static assets from apps/web/dist
+  app.use(express.static(webDistPath));
+
+  // Client-side routing fallback: send index.html for any non-API request
+  app.get('*', (req: Request, res: Response, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(webDistPath, 'index.html'));
+  });
+} else {
+  // Helpful status if frontend has not been built yet (e.g. backend-only local dev)
+  app.get('/', (_req: Request, res: Response) => {
+    res.status(200).send('MerchantIQ API server is running. Frontend build (apps/web/dist) not found. Run "npm run build" to compile frontend assets.');
+  });
+}
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`MerchantIQ unified server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+});
+

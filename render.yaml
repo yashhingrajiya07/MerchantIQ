@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: merchantiq
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SIMULATION_ENGINE_VERSION
+        value: 1.0.0
